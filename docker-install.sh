@@ -20,3 +20,8 @@ add-apt-repository \
 apt-get update
 
 apt-get install --no-install-recommends -y docker-ce docker-ce-cli containerd.io
+
+apt clean
+apt autoclean
+
+find /var/lib/apt/lists/ -maxdepth 1 -type f -print0 | xargs -0 rm
