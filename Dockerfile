@@ -1,5 +1,5 @@
-FROM Debian as dindInstalling
+FROM debian as dindInstalling
 WORKDIR /src
 COPY . .
-RUN docker-install.sh
-ENTRYPOINT [ "/src/entrypoint.sh" ]
+RUN ./docker-install.sh
+CMD [ "/src/entrypoint.sh" ]

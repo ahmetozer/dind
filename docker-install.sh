@@ -25,3 +25,5 @@ apt clean
 apt autoclean
 
 find /var/lib/apt/lists/ -maxdepth 1 -type f -print0 | xargs -0 rm
+
+adduser --disabled-password --gecos "" dinduserns
