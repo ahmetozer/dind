@@ -8,7 +8,8 @@ apt-get install  -y --no-install-recommends \
     curl \
     gnupg-agent \
     software-properties-common \
-    gnupg 
+    gnupg \
+    screen
 
 curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && 
 
