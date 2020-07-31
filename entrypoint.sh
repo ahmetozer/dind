@@ -41,4 +41,12 @@ if [ "$buildx" == "yes" ] || [ "$experimental" == "yes" ]
 then
     args+=(--experimental)
 fi
+
+if [ "$listenlhost" != "no" ]
+then
+    args+=(-H tcp://127.0.0.1:2375)
+    echo "127.0.0.1 docker" >> /etc/hosts
+fi 
+
+args+=(-H unix:///var/run/docker.sock)
 dockerd ${args[@]}
