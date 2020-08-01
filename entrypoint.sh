@@ -4,12 +4,38 @@ set -e
 args=()
 
 docker_net_set() {
-    if [ ! -z "$ipv6" ]
+    if [ ! -z "$ipv6" ] && [ "$ipv6" != "no" ]
     then
         docker run  --rm -d --cap-add NET_ADMIN --cap-add NET_RAW --name ndppd-service --network host ahmetozer/ndppd
     fi
 
 }
+
+
+ipv6_detection() {
+    current_ipv6_addr=`ip -6 route get 2001:: | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
+    if [ $? -eq 0 ]
+    then
+        if [ ! -z "$current_ipv6_addr" ]
+        then
+            ping -6 -c 2 -i 0.3 2606:4700:4700::1111 >/dev/null
+            if [ $? -eq 0 ]
+            then
+                current_depth=`echo $current_ipv6_addr | sed 's/::/:/g' | grep -o -i ":" | wc -l`
+                if [ $current_depth -gt 7 ]
+                then
+                    >&2 echo "You are reach maximum depth in IPv6 Calculation"
+                else
+                    new_ipv6_depth=$((current_depth+1))
+                    new_ipv6_cidr=$((new_ipv6_depth*16))
+                    new_ipv6_block="$current_ipv6_addr/$new_ipv6_cidr"
+                    echo "IPv6 detected and setted to $new_ipv6_block"
+                fi
+            fi
+        fi
+    fi
+}
+
 number_re='^[0-9]+$'
 docker_system_prune() {
     if [ "$prune_interval" == "yes" ]; then
@@ -22,7 +48,7 @@ docker_system_prune() {
             sleep $prune_interval
             if [ -S "/var/run/docker.sock" ]
             then
-                docker system prune -f
+                printf "Dind system prune: "; docker system prune -f
             else
                 echo "Docker is not running."
             fi
@@ -52,17 +78,26 @@ docker_deamon_wait() {
     docker_system_prune&
 }
 
-docker_deamon_wait &
-
 if [ "$userns" == "yes" ]
 then
     args+=(--userns-remap="dinduserns:dinduserns")
 fi
 
-if [ ! -z "$ipv6" ]
+if [ "$ipv6" != "no" ]
 then
-    args+=(--ipv6)
-    args+=(--fixed-cidr-v6="$ipv6")
+    if [ -z "$ipv6" ]
+    then
+        ipv6_detection
+        if [ ! -z "$new_ipv6_block" ]
+        then
+            ipv6=$new_ipv6_block
+            args+=(--ipv6)
+            args+=(--fixed-cidr-v6="$ipv6")
+        fi
+    else 
+        args+=(--ipv6)
+        args+=(--fixed-cidr-v6="$ipv6")
+    fi
 fi
 
 if [ "$buildx" == "yes" ] || [ "$experimental" == "yes" ] 
@@ -78,4 +113,6 @@ then
 fi 
 
 args+=(-H unix:///var/run/docker.sock)
+
+docker_deamon_wait &
 dockerd ${args[@]}
