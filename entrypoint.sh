@@ -22,13 +22,14 @@ ipv6_detection() {
             if [ $? -eq 0 ]
             then
                 current_depth=`echo $current_ipv6_addr | sed 's/::/:/g' | grep -o -i ":" | wc -l`
+                new_ipv6_addr=`echo $current_ipv6_addr | sed 's/::/:/g'`::1
                 if [ $current_depth -gt 7 ]
                 then
                     >&2 echo "You are reach maximum depth in IPv6 Calculation"
                 else
                     new_ipv6_depth=$((current_depth+1))
                     new_ipv6_cidr=$((new_ipv6_depth*16))
-                    new_ipv6_block="$current_ipv6_addr/$new_ipv6_cidr"
+                    new_ipv6_block="$new_ipv6_addr/$new_ipv6_cidr"
                     echo "IPv6 detected and setted to $new_ipv6_block"
                 fi
             fi
