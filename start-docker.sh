@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 screen -dmS dockerd /src/entrypoint.sh
 
