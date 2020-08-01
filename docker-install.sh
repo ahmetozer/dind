@@ -28,3 +28,13 @@ apt autoclean
 find /var/lib/apt/lists/ -maxdepth 1 -type f -print0 | xargs -0 rm
 
 adduser --disabled-password --gecos "" dinduserns
+
+mkdir -p ~/.docker/cli-plugins
+curl https://github.com/docker/buildx/releases/download/v0.4.1/buildx-v0.4.1.linux-amd64 -L -o ~/.docker/cli-plugins/docker-buildx
+#if [ $? -eq 0 ]
+#then
+        chmod +x ~/.docker/cli-plugins/docker-buildx
+#else
+#     echo "Error while getting buildx"
+#     exit 1
+#fi

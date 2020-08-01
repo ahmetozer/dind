@@ -11,6 +11,13 @@ docker_net_set() {
 
 }
 
+docker_buildx() {
+    if [ "$buildx" == "yes" ]
+    then
+        docker buildx create --use
+        docker run --rm --privileged docker/binfmt:820fdd95a9972a5308930a2bdfb8573dd4447ad3
+    fi
+}
 docker_deamon_wait() {
     while [ "$docker_daemon_stat" != "200" ]
     do
@@ -22,6 +29,7 @@ docker_deamon_wait() {
     done
     echo "Deamon ready"
     docker_net_set
+    docker_buildx
 }
 
 docker_deamon_wait &
@@ -41,6 +49,7 @@ if [ "$buildx" == "yes" ] || [ "$experimental" == "yes" ]
 then
     args+=(--experimental)
 fi
+
 
 if [ "$listenlhost" != "no" ]
 then
