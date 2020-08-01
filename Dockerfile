@@ -1,4 +1,4 @@
-FROM debian as dindInstalling
+FROM alpine as dindInstalling
 WORKDIR /src
 COPY . .
 RUN ./docker-install.sh
