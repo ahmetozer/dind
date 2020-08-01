@@ -10,6 +10,25 @@ docker_net_set() {
     fi
 
 }
+number_re='^[0-9]+$'
+docker_system_prune() {
+    if [ "$prune_interval" == "yes" ]; then
+    prune_interval = 60
+    fi
+    if [[ "$prune_interval" =~ $number_re ]] ; then
+        echo "Prune enabled, and interval is $prune_interval"
+        while true
+        do
+            sleep $prune_interval
+            if [ -S "/var/run/docker.sock" ]
+            then
+                docker system prune -f
+            else
+                echo "Docker is not running."
+            fi
+        done
+    fi
+}
 
 docker_buildx() {
     if [ "$buildx" == "yes" ]
@@ -30,6 +49,7 @@ docker_deamon_wait() {
     echo "Deamon ready"
     docker_net_set
     docker_buildx
+    docker_system_prune&
 }
 
 docker_deamon_wait &
