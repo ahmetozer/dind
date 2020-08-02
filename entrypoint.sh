@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 args=()
 
@@ -23,7 +22,7 @@ ipv6_detection() {
             then
                 current_depth=`echo $current_ipv6_addr | sed 's/::/:/g' | grep -o -i ":" | wc -l`
                 new_ipv6_addr=`echo $current_ipv6_addr | sed 's/::/:/g'`::1
-                if [ $current_depth -gt 7 ]
+                if [ $current_depth -gt 5 ]
                 then
                     >&2 echo "You are reach maximum depth in IPv6 Calculation"
                 else
@@ -74,6 +73,8 @@ docker_deamon_wait() {
         sleep 1
     done
     echo "Deamon ready"
+    ifconfig eth0 || true
+    ifconfig docker0 || true
     docker_net_set
     docker_buildx
     docker_system_prune&
@@ -107,7 +108,7 @@ then
 fi
 
 
-if [ "$listenlhost" != "no" ]
+if [ "$listenlhost" == "yes" ]
 then
     args+=(-H tcp://127.0.0.1:2375)
     echo "127.0.0.1 docker" >> /etc/hosts
@@ -117,3 +118,12 @@ args+=(-H unix:///var/run/docker.sock)
 
 docker_deamon_wait &
 dockerd ${args[@]}
+
+dockerd_exit_status=$?
+if [ $dockerd_exit_status -eq 0 ]
+then
+    echo "Docker closed without problem."
+else
+    echo "Docker closed with error."
+    echo "$dockerd_exit_status" > /var/lib/dockerd_exit_status
+fi

@@ -11,6 +11,12 @@ docker_deamon_wait() {
         docker_daemon_stat=$(curl --unix-socket /var/run/docker.sock http/containers/json -s -o /dev/null -w '%{http_code}\n')
         fi
         sleep 1
+        if [ -f "/var/lib/dockerd_exit_code" ]; then
+            dockerd_exit_code=`cat /var/lib/dockerd_exit_code`
+            echo "Docker is exited with $dockerd_exit_code"
+            rm /var/lib/dockerd_exit_code
+            exit 1
+        fi
     done
     echo "Docker Deamon ready"
 }
