@@ -2,10 +2,29 @@
 
 args=()
 
+if [ -z "$default_eth_interface" ];then
+default_eth_interface="eth0"
+fi
+
+ipv4_netmask_to_cidr() {
+    bits=0
+    for octet in $(echo $1| sed 's/\./ /g'); do 
+         binbits=$(echo "obase=2; ibase=10; ${octet}"| bc | sed 's/0//g') 
+         let bits+=${#binbits}
+    done
+    echo "${bits}"
+}
+
 docker_net_set() {
-    if [ ! -z "$ipv6" ] && [ "$ipv6" != "no" ]
+    if [ ! -z "$ipv6" ] && [ "$ipv6" != "no" ] && [ "$bind" != "yes" ]
     then
         docker run  --rm -d --cap-add NET_ADMIN --cap-add NET_RAW --name ndppd-service --network host ahmetozer/ndppd
+    fi
+
+    if [ "$bind" == "yes" ]; then
+        brctl addif docker0 $default_eth_interface
+        ip addr flush dev docker0
+        ip addr flush dev $default_eth_interface
     fi
 
 }
@@ -20,16 +39,20 @@ ipv6_detection() {
             ping -6 -c 2 -i 0.3 2606:4700:4700::1111 >/dev/null
             if [ $? -eq 0 ]
             then
-                current_depth=`echo $current_ipv6_addr | sed 's/::/:/g' | grep -o -i ":" | wc -l`
-                new_ipv6_addr=`echo $current_ipv6_addr | sed 's/::/:/g'`::1
-                if [ $current_depth -gt 5 ]
-                then
-                    >&2 echo "You are reach maximum depth in IPv6 Calculation"
+                if [ "$bind" == "yes" ]; then
+                    new_ipv6_block=`ifconfig | grep "Global" | sed 's/^.*addr: \([^ ]*\).*$/\1/;q'`
                 else
-                    new_ipv6_depth=$((current_depth+1))
-                    new_ipv6_cidr=$((new_ipv6_depth*16))
-                    new_ipv6_block="$new_ipv6_addr/$new_ipv6_cidr"
-                    echo "IPv6 detected and setted to $new_ipv6_block"
+                    current_depth=`echo $current_ipv6_addr | sed 's/::/:/g' | grep -o -i ":" | wc -l`
+                    new_ipv6_addr=`echo $current_ipv6_addr | sed 's/::/:/g'`::1
+                    if [ $current_depth -gt 5 ]
+                    then
+                        >&2 echo "You are reach maximum depth in IPv6 Calculation"
+                    else
+                        new_ipv6_depth=$((current_depth+1))
+                        new_ipv6_cidr=$((new_ipv6_depth*16))
+                        new_ipv6_block="$new_ipv6_addr/$new_ipv6_cidr"
+                        echo "IPv6 detected and setted to $new_ipv6_block"
+                    fi
                 fi
             fi
         fi
@@ -73,9 +96,10 @@ docker_deamon_wait() {
         sleep 1
     done
     echo "Deamon ready"
-    ifconfig eth0 || true
-    ifconfig docker0 || true
     docker_net_set
+    ifconfig $default_eth_interface || true
+    ifconfig docker0 || true
+    brctl show
     docker_buildx
     docker_system_prune&
 }
@@ -100,6 +124,19 @@ then
         args+=(--ipv6)
         args+=(--fixed-cidr-v6="$ipv6")
     fi
+fi
+
+if [ "$bind" == "yes" ]; then
+        current_ipv4_mask=$(ifconfig $default_eth_interface | grep "Mask" | sed 's/^.*Mask:\([^ ]*\).*$/\1/;q')
+        current_ipv4_cidr=$(ipv4_netmask_to_cidr $current_ipv4_mask)
+        current_ipv4=$(traceroute 192.88.99.1  -m 1 | grep -v "192.88.99.1" |cut -d"(" -f2 | cut -d")" -f 1)
+        if [ -z "$current_ipv4" ];then #Maybe getaway not response the request
+            current_ipv4=$(ifconfig $default_eth_interface | grep "Mask" | sed 's/^.*addr:\([^ ]*\).*$/\1/;q')
+            current_ipv4_first=$(echo $current_ipv4 | cut -d"." -f -3)
+            current_ipv4_gw=$(bc <<< "$(ifconfig $default_eth_interface | grep "Mask" | sed 's/^.*addr:\([^ ]*\).*$/\1/;q' | cut -d"." -f 4)-1")
+            current_ipv4="$current_ipv4_first.$current_ipv4_gw"
+        fi
+        args+=(--bip $current_ipv4/$current_ipv4_cidr)
 fi
 
 if [ "$buildx" == "yes" ] || [ "$experimental" == "yes" ] 
