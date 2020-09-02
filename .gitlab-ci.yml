@@ -1,0 +1,15 @@
+docker-build-master:
+    variables:
+      buildx: "yes"
+    image: ahmetozer/dind:latest
+    stage: build
+    before_script:
+      - /src/start-docker.sh
+      - docker login -u "ahmetozer" -p "$dhub"
+    script:
+      #- docker buildx build --platform linux/amd64,linux/arm64,linux/arm --push -t ahmetozer/dind .
+      - docker build -t ahmetozer/dind .
+      - docker push ahmetozer/dind
+    only:
+      - master
+  
